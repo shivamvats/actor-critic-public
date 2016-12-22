@@ -1,10 +1,5 @@
 from __future__ import print_function
 import math
-try:
-    import fst
-except ImportError:
-    print("No PyFST module, trying to work without it. If you want to run the "
-          "language model, please install openfst and PyFST")
 import numpy
 import theano
 import itertools
