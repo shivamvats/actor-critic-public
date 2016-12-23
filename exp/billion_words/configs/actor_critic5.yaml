@@ -8,4 +8,4 @@ training:
 stages:
     critic_pretraining:
         training:
-            num_batches: 30000
+            num_batches: 3000

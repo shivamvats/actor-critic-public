@@ -3,9 +3,9 @@ data:
     dataset_class: !!python/name:lvsr.datasets.text.TextDataset
     dataset_filename:
         train:
-            '1-billion-word/training-monolingual.tokenized.shuffled/news.en-*-of-00100'
+            '1-billion-word/training-monolingual.tokenized.shuffled/news.en-00001.1-of-00100'
         valid:
-            '1-billion-word/heldout-monolingual.tokenized.shuffled/news.en.heldout-00000-of-00050'
+            '1-billion-word/heldout-monolingual.tokenized.shuffled/news.en.heldout-00000.1-of-00050'
     name_mapping:
         train: train
         valid: train

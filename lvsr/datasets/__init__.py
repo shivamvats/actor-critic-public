@@ -84,26 +84,6 @@ class _Clip(SourcewiseTransformer):
         return result
 
 
-class _Corrupt(SourcewiseTransformer):
-    def __init__(self, stream, corruption_prob,
-                 char_map, eos_label, **kwargs):
-        self.corruption_prob = corruption_prob
-        self.char_map = char_map
-        self.eos_label = eos_label
-        self.rng = numpy.random.RandomState(1)
-        super(_Corrupt, self).__init__(stream, True, **kwargs)
-
-    def transform_source_example(self, source_example, _):
-        result = source_example.copy()
-        mask = self.rng.binomial(
-            1, self.corruption_prob, len(source_example) - 1)
-        noise = self.rng.choice(self.char_map.values(), len(source_example) - 1)
-        for i, m in enumerate(mask):
-            if m and noise[i] != self.eos_label:
-                result[i] = noise[i]
-        return result
-
-
 class Rearrange(AgnosticTransformer):
     """Rearranges the sources of the stream.
 
@@ -179,9 +159,6 @@ class Data(object):
         maximum length of input, longer sequences will be filtered.
     clip_length : int
         Clip sequences labels to be at most that long.
-    corrupt_sources : dict
-        Dictionary of the sources that will be randomly corrupted.
-        Only supports sources with the same alphabet as
     add_eos : bool
         Add end of sequence symbol.
     add_bos : int
@@ -199,7 +176,6 @@ class Data(object):
                  validation_batch_size=None,
                  sort_k_batches=None,
                  max_length=None, filter_by=None, clip_length=None,
-                 corrupt_sources=None,
                  add_eos=True, eos_label=None,
                  add_bos=0, prepend_eos=False,
                  force_eos_when_clipping=False,
@@ -233,7 +209,6 @@ class Data(object):
         self.prepend_eos = prepend_eos
         self._eos_label = eos_label
         self.add_bos = add_bos
-        self.corrupt_sources = corrupt_sources
         self.dataset_cache = {}
 
     @property
@@ -333,15 +308,6 @@ class Data(object):
             stream, dict_subset(self.sources_map, self.default_sources + list(add_sources)))
 
         # Tranformations after rearrangement
-        if self.corrupt_sources:
-            # Can only corrupt sources with the same alphabet
-            # as labels
-            for source, prob in zip(self.corrupt_sources['names'],
-                                    self.corrupt_sources['probs']):
-                stream = _Corrupt(
-                    stream, prob,
-                    self.token_map(source), self.eos_label,
-                    which_sources=[source])
         if self.max_length and part == 'train':
             # Filtering by the maximum length is only done
             # for the training set.
