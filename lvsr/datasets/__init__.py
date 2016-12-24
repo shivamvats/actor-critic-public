@@ -15,6 +15,10 @@ from fuel.transformers import (
 from lvsr.datasets.h5py import H5PYAudioDataset
 from blocks.utils import dict_subset
 
+import nltk
+from nltk.tokenize import RegexpTokenizer
+from keras.preprocessing.text import Tokenizer
+from gensim.models import Word2Vec
 
 import logging
 logger = logging.getLogger(__name__)
@@ -133,6 +137,26 @@ class ForceCContiguous(Transformer):
                 result.append(piece)
         return tuple(result)
 
+def get_token_dict(dataset_filename):
+    print(dataset_filename)
+    print("inside get_token_dict")
+    sents = []
+    with open(dataset_filename, 'r') as f:
+        sents = f.readlines()
+    sents = sents[:10]
+    nltk_tokenizer = RegexpTokenizer(r'\w+')
+    data = []
+    processed_data = []
+    for sent in sents:
+        sent = ' '.join(nltk_tokenizer.tokenize(sent))
+        processed_data.append(sent)
+
+    tokenizer = Tokenizer()
+    tokenizer.fit_on_texts(processed_data)
+    word2code = tokenizer.word_index.copy()
+
+    return word2code
+
 
 class Data(object):
     """Dataset manager.
@@ -211,6 +235,20 @@ class Data(object):
         self.add_bos = add_bos
         self.dataset_cache = {}
 
+        part = 'train'
+        filename = (self.dataset_filename
+                            if isinstance(self.dataset_filename, str)
+                            else self.dataset_filename[part])
+        filename = os.path.join(fuel.config.data_path[0], filename)
+        self.word2codeTrain = get_token_dict(filename)
+
+        part = 'valid'
+        filename = (self.dataset_filename
+                            if isinstance(self.dataset_filename, str)
+                            else self.dataset_filename[part])
+        filename = os.path.join(fuel.config.data_path[0], filename)
+        self.word2codeValid = get_token_dict(filename)
+
     @property
     def info_dataset(self):
         return self.get_dataset("train")
@@ -246,11 +284,18 @@ class Data(object):
 
     def get_dataset(self, part, add_sources=()):
         """Returns dataset from the cache or creates a new one"""
+
         sources = []
         for src in self.default_sources + list(add_sources):
             sources.append(self.sources_map[src])
         sources = tuple(set(sources))
         key = (part, sources)
+
+        if part == 'train':
+            word2code = self.word2codeTrain
+        else:
+            word2code = self.word2codeValid
+
         if key not in self.dataset_cache:
             dataset_filename = (self.dataset_filename
                                 if isinstance(self.dataset_filename, str)
@@ -260,7 +305,8 @@ class Data(object):
                                           dataset_filename),
                 which_sets=(self.name_mapping.get(part, part), ),
                 sources=sources,
-                target_source=self.sources_map['labels'])
+                target_source=self.sources_map['labels'],
+                token_dict = word2code)
         return self.dataset_cache[key]
 
     def get_stream(self, part, batches=True, shuffle=True, add_sources=(),
@@ -330,10 +376,27 @@ class Data(object):
         stream = ForceCContiguous(stream)
         return stream
 
-    def create_dicts(self, part, data_stream, add_sources=()):
-        sources = []
-        for src in self.default_sources + list(add_sources):
-            sources.append(self.sources_map[src])
-        sources = tuple(set(sources))
-        key = (part, sources)
-        self.dataset_cache[key].create_dicts(data_stream)
+    def get_embedding(self, embedding_dim, part='train'):
+        #w2v_model = self.load_glove_model()
+        w2v_model = Word2Vec(["I am a man", "You are a girl"], size=10, window=5, min_count=1, workers=4)
+
+        if part == 'train':
+            word2code = self.word2codeTrain
+        else:
+            word2code = self.word2codeValid
+        self.embedding_mat = numpy.zeros((len(word2code) + 1, embedding_dim), dtype=numpy.float32)
+        for word, i in word2code.items():
+            if word in w2v_model.vocab:
+                embedding_vector = numpy.array(w2v_model[word], dtype=numpy.float32)
+            else:
+                embedding_vector = numpy.zeros(embedding_dim, dtype=numpy.float32)
+
+            if embedding_vector is not None:
+                # words not found in embedding index will be all-zeros.
+                self.embedding_mat[i] = embedding_vector
+        return self.embedding_mat
+
+    def load_glove_model(self):
+        self.w2v_model = gensim.models.Word2Vec.load_word2vec_format(
+                "/home/aries/Documents/Learning/DL/autoencoder/data/glove.6B/glove.6B.200d_gensim.txt")
+        return self.w2v_model

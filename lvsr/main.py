@@ -239,7 +239,7 @@ class LoadLog(TrainingExtension):
             reraise_as("Failed to load the state")
 
 
-def create_model(config, data,
+def create_model(config, data, embedding_mat,
                  load_path=None,
                  test_tag=False):
     """
@@ -278,6 +278,7 @@ def create_model(config, data,
     recognizer = EncoderDecoder(
         input_dims=input_dims,
         input_num_chars=input_num_chars,
+        embedding_mat=embedding_mat,
         bos_label=data.bos_label,
         eos_label=data.eos_label,
         num_labels=data.num_labels,
@@ -300,7 +301,6 @@ def create_model(config, data,
                 setattr(brick, attribute, value)
                 brick.push_initialization_config()
         recognizer.initialize()
-    return
 
     if test_tag:
         stream = data.get_stream("train")
@@ -319,22 +319,23 @@ def initialize_all(config, save_path, bokeh_name,
     root_path, extension = os.path.splitext(save_path)
 
     data = Data(**config['data'])
-    # This function needs to be called to update the token dictionary.
     data_stream = data.get_stream(
-        #"train", shuffle=False, num_examples=data.batch_size)
-        "train", shuffle=False, num_examples=100)
-    data.create_dicts(part="train", data_stream=data_stream)
-    print("$$")
-    print("====================")
-    print("Data")
+        "train", shuffle=False, num_examples=data.batch_size)
+    print("After init")
+    print("\n\n\n\n")
+    da = []
+    for d in data_stream.get_epoch_iterator():
+        da.append(d)
+    #print(da[0])
+
+    embedding_mat = data.get_embedding(embedding_dim=10)
+    # This function needs to be called to update the token dictionary.
     # XXX
     print("get_stream function in Data class fetches the data in stream form")
     # XXX
-    print(type(data))
-    print(data)
     train_conf = config['training']
     mon_conf = config['monitoring']
-    recognizer = create_model(config, data,
+    recognizer = create_model(config, data, embedding_mat=embedding_mat,
                               test_tag=test_tag)
     step_number = theano.shared(0)
 
@@ -952,6 +953,8 @@ def train(config, save_path, bokeh_name,
         config, save_path, bokeh_name,
         params, bokeh_server, bokeh, test_tag, use_load_ext,
         load_log, fast_start)
+    print("INITIALIZATION DONE")
+
 
     num_examples = config['training'].get('num_examples', None)
 

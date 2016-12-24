@@ -212,6 +212,9 @@ class EncoderDecoder(Initializable, Random):
                  attention_type,
                  criterion,
                  bottom,
+         #XXX
+                 embedding_mat,
+
                  lm=None, token_map=None,
                  bidir=True, window_size=None,
                  max_length=None, subsample=None,
@@ -285,7 +288,7 @@ class EncoderDecoder(Initializable, Random):
                 subsample = [1] * len(dims_bidir)
             encoder = Encoder(self.enc_transition, dims_bidir,
                             bottom.get_dim(bottom.apply.outputs[0]),
-                            subsample, bidir=bidir)
+                            subsample, embedding_mat = embedding_mat, bidir=bidir)
         elif window_size:
             encoder = ConvEncoder(
                 max_length, bottom.get_dim(bottom.apply.outputs[0]), window_size)

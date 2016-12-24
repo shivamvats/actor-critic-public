@@ -91,15 +91,26 @@ class RecurrentWithExtraInput(Initializable):
 class InitializableSequence(Sequence, Initializable):
     pass
 
+class EmbeddingLookupTable(LookupTable):
+    def __init__(self, embedding_mat, **kwargs):
+        embedding_mat = numpy.asarray(embedding_mat)
+        self.length = embedding_mat.shape[0]
+        self.dim = embedding_mat.shape[1]
+        super(EmbeddingLookupTable, self).__init__(self.length, self.dim, **kwargs)
+
+    def _push_initialization_config(self):
+        self.W = embedding_mat
+
 
 class Encoder(Initializable):
 
-    def __init__(self, enc_transition, dims, dim_input, subsample, bidir, **kwargs):
+    def __init__(self, enc_transition, dims, dim_input, subsample, bidir, embedding_mat, **kwargs):
         super(Encoder, self).__init__(**kwargs)
         self.subsample = subsample
 
-        self.embedding_dim = dim_input
-        self.embedding = LookupTable(name='embeddings')
+        self.embedding_mat = embedding_mat
+        mat_shape = numpy.asarray(embedding_mat).shape
+        self.embedding = LookupTable(weights_init=self.embedding_mat, length=mat_shape[0], dim=mat_shape[1], name='embedding')
         self.children.append(self.embedding)
 
         if dims:
@@ -124,7 +135,13 @@ class Encoder(Initializable):
     @application(outputs=['encoded', 'encoded_mask'])
     def apply(self, input_, mask=None):
         # Applies each layer one by one (including the lookup if is added as a child)
-        for layer, take_each in zip(self.children, self.subsample):
+        print("INSIDE APPLY")
+        print(input_.shape)
+        input_ = self.embedding.apply(input_)
+
+        for layer, take_each in zip(self.children[1:], self.subsample):
+            print(layer)
+            print(input_)
             input_ = layer.apply(input_, mask)
             input_ = input_[::take_each]
             if mask:
