@@ -1,6 +1,6 @@
 parent: $LVSR/lvsr/configs/prototype_autoencoder.yaml
 data:
-    dataset_class: !!python/name:lvsr.datasets.text.TextDataset
+    dataset_class: !!python/name:lvsr.datasets.text.TextDatasetWord
     dataset_filename:
         train:
             '1-billion-word/training-monolingual.tokenized.shuffled/news.en-00001.1-of-00100'

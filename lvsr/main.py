@@ -273,6 +273,7 @@ def create_model(config, data,
     input_num_chars = {
         source: len(data.token_map(source))
         for source in bottom_class.discrete_input_sources}
+    print("Inside model")
 
     recognizer = EncoderDecoder(
         input_dims=input_dims,
@@ -299,6 +300,7 @@ def create_model(config, data,
                 setattr(brick, attribute, value)
                 brick.push_initialization_config()
         recognizer.initialize()
+    return
 
     if test_tag:
         stream = data.get_stream("train")
@@ -317,6 +319,19 @@ def initialize_all(config, save_path, bokeh_name,
     root_path, extension = os.path.splitext(save_path)
 
     data = Data(**config['data'])
+    # This function needs to be called to update the token dictionary.
+    data_stream = data.get_stream(
+        #"train", shuffle=False, num_examples=data.batch_size)
+        "train", shuffle=False, num_examples=100)
+    data.create_dicts(part="train", data_stream=data_stream)
+    print("$$")
+    print("====================")
+    print("Data")
+    # XXX
+    print("get_stream function in Data class fetches the data in stream form")
+    # XXX
+    print(type(data))
+    print(data)
     train_conf = config['training']
     mon_conf = config['monitoring']
     recognizer = create_model(config, data,
@@ -1048,7 +1063,6 @@ def search(config, params, load_path, part, decode_only, report,
 
     has_uttids = 'uttids' in data.info_dataset.provides_sources
     add_sources = ('uttids',) if has_uttids else ()
-    dataset = data.get_dataset(part, add_sources)
     stream = data.get_stream(
         part, batches=False,
         shuffle=

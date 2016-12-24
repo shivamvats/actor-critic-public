@@ -329,3 +329,11 @@ class Data(object):
         stream = Mapping(stream, switch_first_two_axes)
         stream = ForceCContiguous(stream)
         return stream
+
+    def create_dicts(self, part, data_stream, add_sources=()):
+        sources = []
+        for src in self.default_sources + list(add_sources):
+            sources.append(self.sources_map[src])
+        sources = tuple(set(sources))
+        key = (part, sources)
+        self.dataset_cache[key].create_dicts(data_stream)

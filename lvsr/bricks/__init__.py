@@ -3,7 +3,8 @@ import numpy
 from theano import tensor
 
 from blocks.bricks import (
-    Brick, Initializable, Linear, Sequence, Tanh)
+    Brick, Initializable, Linear, Sequence, Tanh )
+from blocks.bricks.lookup import LookupTable
 from blocks.bricks.base import lazy, application
 from blocks.bricks.parallel import Fork, Distribute
 from blocks.bricks.recurrent import Bidirectional
@@ -97,6 +98,10 @@ class Encoder(Initializable):
         super(Encoder, self).__init__(**kwargs)
         self.subsample = subsample
 
+        self.embedding_dim = dim_input
+        self.embedding = LookupTable(name='embeddings')
+        self.children.append(self.embedding)
+
         if dims:
             dims_under = [dim_input] + list((2 if bidir else 1) * numpy.array(dims))
             for layer_num, (dim_under, dim) in enumerate(zip(dims_under, dims)):
@@ -110,9 +115,15 @@ class Encoder(Initializable):
             self.dim_encoded = (2 if bidir else 1) * dims[-1]
         else:
             self.dim_encoded = dim_input
+        print("insize Encoder")
+        print("======================================================")
+        print("dims")
+        print(dims, dim_input)
+        print(self.children)
 
     @application(outputs=['encoded', 'encoded_mask'])
     def apply(self, input_, mask=None):
+        # Applies each layer one by one (including the lookup if is added as a child)
         for layer, take_each in zip(self.children, self.subsample):
             input_ = layer.apply(input_, mask)
             input_ = input_[::take_each]

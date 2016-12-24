@@ -237,6 +237,9 @@ class EncoderDecoder(Initializable, Random):
                  compute_policy=True,
                  extra_generation_steps=3,
                  **kwargs):
+        print("Inside Encoder decoer")
+        print("===========================")
+        print(bottom)
         all_arguments = copy.deepcopy(locals())
         all_arguments.update(copy.deepcopy(kwargs))
         del all_arguments['kwargs']
